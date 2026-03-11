@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="D.O.R.K.">
+<meta name="theme-color" content="#0a0600">
+<meta name="description" content="D.O.R.K. v2.0 — A text adventure in corporate America. Digital Operations Research Kollective, 1987. Play free in your browser.">
+<meta property="og:title" content="D.O.R.K. — A Text Adventure in Corporate America">
+<meta property="og:description" content="It is Monday. It is 1987. The mainframe is dead. Your lunch has been stolen. The printer may be sentient. Welcome to D.O.R.K.">
+<meta property="og:type" content="website">
+<title>D.O.R.K. — A Text Adventure in Corporate America</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:#0a0600;height:100%;width:100%;font-family:'IBM Plex Mono','Courier New',monospace;overflow:hidden;color:#ffcc66;-webkit-text-size-adjust:100%}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
+.blink{animation:blink 1.2s infinite}
+.fade-in{animation:fadeIn .3s ease-out}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:#0a0600}
+::-webkit-scrollbar-thumb{background:#553300;border-radius:3px}
+::selection{background:rgba(255,153,0,.3);color:#ffcc66}
+
+/* CRT overlay */
+#crt-lines{position:fixed;top:0;left:0;right:0;bottom:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.12) 0px,rgba(0,0,0,.12) 1px,transparent 1px,transparent 3px);pointer-events:none;z-index:9000;opacity:.3}
+#crt-vig{position:fixed;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.4) 100%);pointer-events:none;z-index:9001}
+
+/* Title screen */
+#title{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;z-index:10;padding:16px;text-align:center}
+#title pre{color:#ff9900;font-size:clamp(7px,2.2vw,14px);line-height:1.2;margin-bottom:16px;text-shadow:0 0 10px rgba(255,153,0,.5)}
+#title .sub{color:#ffb833;font-size:clamp(10px,1.8vw,14px);letter-spacing:3px;margin-bottom:4px}
+#title .co{color:#885500;font-size:11px;letter-spacing:1px;margin-bottom:4px}
+#title .by{color:#664400;font-size:10px;margin-bottom:20px}
+#title .tagline{color:#553300;font-size:10px;font-style:italic;margin-bottom:24px}
+
+/* Mode selector */
+.mode-box{display:flex;flex-direction:column;gap:8px;margin-bottom:20px;width:100%;max-width:420px}
+.mode-btn{background:transparent;border:1px solid #553300;color:#ff9900;padding:12px 16px;font-family:'IBM Plex Mono',monospace;font-size:13px;cursor:pointer;text-align:left;transition:all .2s;border-radius:3px;-webkit-appearance:none}
+.mode-btn:hover,.mode-btn:focus{background:rgba(255,153,0,.08);border-color:#ff9900}
+.mode-btn .ml{color:#ffb833;font-weight:700}
+.mode-btn .md{color:#885500;font-size:10px;display:block;margin-top:2px}
+
+/* API key input */
+#api-area{display:none;margin-bottom:16px;width:100%;max-width:420px;text-align:center}
+#api-area label{color:#885500;font-size:10px;display:block;margin-bottom:4px;letter-spacing:1px}
+#api-input{background:rgba(255,153,0,.05);border:1px solid #553300;color:#ff9900;padding:10px;font-family:'IBM Plex Mono',monospace;font-size:13px;width:100%;max-width:340px;outline:none;text-align:center;border-radius:3px}
+#api-input:focus{border-color:#ff9900}
+#api-input::placeholder{color:#442200}
+#api-go{background:rgba(255,153,0,.1);border:1px solid #ff9900;color:#ff9900;padding:8px 24px;font-family:'IBM Plex Mono',monospace;font-size:13px;cursor:pointer;margin-top:8px;border-radius:3px;letter-spacing:2px;-webkit-appearance:none}
+#api-go:hover{background:rgba(255,153,0,.2)}
+.api-note{color:#442200;font-size:9px;margin-top:6px;max-width:340px;line-height:1.5}
+.donate-line{color:#553300;font-size:9px;margin-top:16px}
+.donate-line b{color:#885500}
+
+/* Game screen */
+#game{width:100%;height:100%;display:none;position:relative;z-index:10}
+#layout{display:flex;height:100%}
+#main{flex:1;display:flex;flex-direction:column;min-width:0}
+
+/* Header */
+#hdr{background:#1a0e00;border-bottom:1px solid #553300;padding:6px 14px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+#hdr .ht{color:#ff9900;font-size:11px;font-weight:700;letter-spacing:2px}
+#hdr .hs{color:#885500;font-size:9px}
+
+/* Messages */
+#msgs{flex:1;overflow-y:auto;padding:14px 18px;background:linear-gradient(180deg,#0a0600,#0d0800);-webkit-overflow-scrolling:touch}
+.m{margin-bottom:14px}
+.m-sys{color:#ff9900;font-size:11px;line-height:1.4;white-space:pre-wrap;text-shadow:0 0 4px rgba(255,153,0,.2)}
+.m-ply{color:#33cc33;font-size:13px;line-height:1.5}
+.m-ply .p{color:#227722;margin-right:6px}
+.m-nar{color:#ffcc66;font-size:13px;line-height:1.7;border-left:2px solid #553300;padding-left:12px;text-shadow:0 0 3px rgba(255,200,100,.1);white-space:pre-wrap}
+.m-info{color:#33cc33;font-size:11px;line-height:1.4}
+.m-err{color:#cc3300;font-size:11px}
+.m-bright{color:#ffb833;font-size:12px;font-weight:700}
+.m-dotty{color:#00cccc;font-size:12px;line-height:1.5;padding-left:12px;font-style:italic}
+.m-load{color:#885500;font-size:12px;font-style:italic}
+
+/* Input */
+#inp-area{border-top:1px solid #553300;background:#0d0800;padding:10px 14px;display:flex;gap:8px;align-items:center;flex-shrink:0}
+#inp-area .pr{color:#33cc33;font-size:14px}
+#ginp{flex:1;background:transparent;border:none;outline:none;color:#33cc33;font-size:14px;font-family:'IBM Plex Mono',monospace;caret-color:#33cc33;min-width:0}
+#ginp::placeholder{color:#226622;font-size:11px}
+#gbtn{background:rgba(255,153,0,.12);border:1px solid #553300;color:#ff9900;padding:8px 14px;font-size:11px;font-family:'IBM Plex Mono',monospace;cursor:pointer;letter-spacing:1px;border-radius:3px;flex-shrink:0;-webkit-appearance:none}
+#gbtn:active{background:rgba(255,153,0,.25)}
+
+/* Sidebar */
+#side{width:200px;background:#0d0800;border-left:1px solid #553300;padding:14px 10px;overflow-y:auto;flex-shrink:0;-webkit-overflow-scrolling:touch}
+.sp-title{color:#ff9900;font-size:9px;font-weight:700;letter-spacing:3px;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid #332200;text-align:center}
+.sb{margin-bottom:14px}
+.sl{color:#ff9900;font-weight:700;font-size:10px;letter-spacing:2px;margin-bottom:3px}
+.sv{color:#ffb833;font-weight:700}
+.ss{font-size:8px;color:#885500;margin-top:2px}
+#s-time{font-size:17px}
+#s-loc{font-size:11px;word-break:break-word}
+#s-bytes{font-size:22px}
+.bar-bg{background:#1a1000;border:1px solid #553300;border-radius:2px;height:11px;overflow:hidden}
+.bar-fill{height:100%;transition:width .4s,background .4s}
+.pto-row{display:flex;gap:3px}
+.pto-b{width:18px;height:18px;border:1px solid #332200;display:flex;align-items:center;justify-content:center;font-size:9px;color:#332200;border-radius:2px}
+.pto-b.on{border-color:#ffb833;background:rgba(255,153,0,.2);color:#ffb833}
+.inv-s{font-size:9px;padding:2px 3px;border:1px solid #221100;color:#332200;margin-bottom:1px;border-radius:1px}
+.inv-s.f{color:#ffb833;background:rgba(255,153,0,.04);border-color:#553300}
+#end-box{display:none;margin-top:12px;padding:8px;border:1px solid #ff9900;background:rgba(255,153,0,.08);text-align:center}
+#end-box .el{color:#ff9900;font-size:9px;font-weight:700;letter-spacing:2px;margin-bottom:3px}
+#end-box .ev{color:#ffb833;font-size:11px}
+
+/* Mode indicator & toggle */
+#mode-ind{margin-top:12px;padding:6px;border:1px solid #332200;border-radius:3px;text-align:center}
+#mode-ind .mi-label{font-size:8px;color:#885500;letter-spacing:2px;margin-bottom:2px}
+#mode-ind .mi-val{font-size:10px;color:#ff9900}
+#ai-toggle{background:transparent;border:1px solid #553300;color:#885500;font-size:8px;padding:3px 8px;margin-top:4px;cursor:pointer;font-family:'IBM Plex Mono',monospace;border-radius:2px;-webkit-appearance:none}
+#ai-toggle:hover{color:#ff9900;border-color:#ff9900}
+#ai-remove{background:transparent;border:1px solid #553300;color:#cc3300;font-size:8px;padding:3px 8px;margin-top:3px;cursor:pointer;font-family:'IBM Plex Mono',monospace;border-radius:2px;-webkit-appearance:none}
+#ai-remove:hover{border-color:#cc3300}
+
+/* In-game API key overlay */
+#key-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(10,6,0,.92);z-index:9800;align-items:center;justify-content:center;flex-direction:column}
+#key-overlay.show{display:flex}
+#key-overlay .ko-title{color:#ff9900;font-size:14px;font-weight:700;letter-spacing:2px;margin-bottom:12px}
+#key-overlay .ko-inp{background:rgba(255,153,0,.05);border:1px solid #553300;color:#ff9900;padding:10px;font-family:'IBM Plex Mono',monospace;font-size:13px;width:300px;outline:none;text-align:center;border-radius:3px}
+#key-overlay .ko-inp:focus{border-color:#ff9900}
+#key-overlay .ko-inp::placeholder{color:#442200}
+#key-overlay .ko-btns{margin-top:10px;display:flex;gap:8px}
+#key-overlay .ko-btn{background:rgba(255,153,0,.1);border:1px solid #ff9900;color:#ff9900;padding:8px 20px;font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;border-radius:3px;letter-spacing:1px;-webkit-appearance:none}
+#key-overlay .ko-btn:hover{background:rgba(255,153,0,.2)}
+#key-overlay .ko-cancel{border-color:#553300;color:#885500}
+#key-overlay .ko-cancel:hover{color:#ff9900;border-color:#ff9900}
+#key-overlay .ko-note{color:#442200;font-size:9px;margin-top:8px;max-width:300px;text-align:center;line-height:1.5}
+
+/* Sidebar toggle mobile */
+#sb-tog{display:none;position:fixed;top:8px;right:8px;z-index:9500;background:rgba(255,153,0,.15);border:1px solid #553300;color:#ff9900;width:34px;height:34px;font-size:14px;cursor:pointer;border-radius:3px;font-family:'IBM Plex Mono',monospace;-webkit-appearance:none}
+
+@media(max-width:768px){
+  #side{position:fixed;top:0;right:-220px;width:220px;height:100%;z-index:9100;transition:right .3s}
+  #side.open{right:0}
+  #sb-tog{display:block}
+  #ginp{font-size:16px}
+}
+</style>
+</head>
+<body>
+<div id="crt-lines"></div>
+<div id="crt-vig"></div>
+
+<!-- ==================== TITLE SCREEN ==================== -->
+<div id="title">
+<pre>
+ ██████╗  ██████╗ ██████╗ ██╗  ██╗
+ ██╔══██╗██╔═══██╗██╔══██╗██║ ██╔╝
+ ██║  ██║██║   ██║██████╔╝█████╔╝
+ ██║  ██║██║   ██║██╔══██╗██╔═██╗
+ ██████╔╝╚██████╔╝██║  ██║██║  ██╗
+ ╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝</pre>
+<div class="sub">A TEXT ADVENTURE IN CORPORATE AMERICA</div>
+<div class="co">Digital Operations Research Kollective, 1987</div>
+<div class="by">By Geoffrey Taber &middot; github.com/GeoxT &middot; geox.blog</div>
+<div class="tagline">"Synergizing Tomorrow's Solutions Today"</div>
+
+<div class="mode-box">
+  <button class="mode-btn" onclick="startGame('offline')"><span class="ml">[1] PLAY FREE</span><span class="md">Classic text parser. No account needed. Play instantly.</span></button>
+  <button class="mode-btn" onclick="showApiInput('claude')"><span class="ml">[2] AI NARRATOR (Claude)</span><span class="md">Dynamic AI responses. Requires Anthropic API key.</span></button>
+  <button class="mode-btn" onclick="showApiInput('openai')"><span class="ml">[3] AI NARRATOR (GPT-4o)</span><span class="md">Dynamic AI responses. Requires OpenAI API key.</span></button>
+</div>
+
+<div id="api-area">
+  <label id="api-label">ENTER API KEY</label>
+  <input type="password" id="api-input" placeholder="sk-..." autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore>
+  <br><button id="api-go" onclick="startWithKey()">LAUNCH</button>
+  <div class="api-note">Key stays in your browser. Sent only to the API. Never stored.</div>
+  <div style="margin-top:8px"><button class="mode-btn" onclick="startGame('offline')" style="padding:6px 12px;font-size:10px;text-align:center">Or play free without an API key</button></div>
+</div>
+
+<div class="donate-line">Like the game? <b>BTC: 13P6c6t4Y2ZFpb7tTYB9J1y4YEABXqPme3</b></div>
+</div>
+
+<!-- ==================== GAME SCREEN ==================== -->
+<div id="game">
+<button id="sb-tog" onclick="document.getElementById('side').classList.toggle('open')">☰</button>
+<div id="layout">
+<div id="main">
+  <div id="hdr">
+    <div class="ht">D.O.R.K. — TERMINAL 7B</div>
+    <div class="hs" id="hdr-st">v2.0 | 8:00 AM</div>
+  </div>
+  <div id="msgs"></div>
+  <div id="inp-area">
+    <span class="pr">&gt;</span>
+    <input type="text" id="ginp" placeholder="Type a command..." autocomplete="off" autocorrect="off" autocapitalize="off">
+    <button id="gbtn" onclick="submit()">SEND</button>
+  </div>
+</div>
+<div id="side">
+  <div class="sp-title">STATUS PANEL</div>
+  <div class="sb"><div class="sl">CLOCK</div><div class="sv" id="s-time">8:00 AM</div><div class="ss">Demo at 5:00 PM</div></div>
+  <div class="sb"><div class="sl">LOCATION</div><div class="sv" id="s-loc">Cubicle 7B</div></div>
+  <div class="sb"><div class="sl">BYTES</div><div class="sv" id="s-bytes">0000</div><div class="ss">Bytes accumulated</div></div>
+  <div class="sb"><div class="sl">SUSPICION</div><div class="bar-bg"><div class="bar-fill" id="s-bar" style="width:5%;background:#33aa33"></div></div><div class="ss" id="s-susp">Team Player — 5%</div></div>
+  <div class="sb"><div class="sl">PTO</div><div class="pto-row" id="s-pto"></div><div class="ss" id="s-pto-l">3 hours left</div></div>
+  <div class="sb"><div class="sl" id="s-inv-l">INVENTORY [0/8]</div><div id="s-inv"></div></div>
+  <div id="end-box"><div class="el">ENDING</div><div class="ev" id="end-val"></div></div>
+  <div id="mode-ind">
+    <div class="mi-label">MODE</div>
+    <div class="mi-val" id="mi-v">OFFLINE</div>
+    <div class="ss" id="key-status" style="margin-top:3px"></div>
+    <button id="ai-toggle" onclick="toggleAI()">Switch to AI</button>
+    <button id="ai-remove" onclick="clearApiKey()" style="display:none">Remove API Key</button>
+  </div>
+</div>
+</div>
+</div>
+
+<!-- In-game API key overlay -->
+<div id="key-overlay">
+  <div class="ko-title">ENTER API KEY</div>
+  <div class="ss" id="ko-label" style="margin-bottom:8px;color:#885500">Claude (Anthropic)</div>
+  <input type="password" class="ko-inp" id="ko-input" placeholder="sk-ant-..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore>
+  <div class="ko-btns">
+    <button class="ko-btn" onclick="confirmKeyOverlay()">CONNECT</button>
+    <button class="ko-btn ko-cancel" onclick="cancelKeyOverlay()">CANCEL</button>
+  </div>
+  <div class="ko-note">Key stays in memory only. Never stored to disk. Sent only to the API. Type CLEARKEY anytime to remove.</div>
+</div>
+
+<script>
+// ============================================================
+// D.O.R.K. v2.0 — Web Edition
+// Hybrid: Offline parser + Optional AI narrator
+// By Geoffrey Taber | github.com/GeoxT | geox.blog
+// ============================================================
+
+const ROOMS={cubicle:"Cubicle 7B",hallway:"Hallway",breakroom:"Break Room",copyroom:"Copy Room",gary:"Gary's Cubicle",boss:"Boss's Office",conference:"Conference Room",server:"Server Room",supply:"Supply Closet",bathroom:"Bathroom",parking:"Parking Lot"};
+const ALIASES={desk:"cubicle","7b":"cubicle",home:"cubicle",hall:"hallway",break:"breakroom",kitchen:"breakroom",copy:"copyroom",printer:"copyroom",accounting:"gary",office:"boss",henderson:"boss",meeting:"conference",serverroom:"server",mainframe:"server",closet:"supply",supplies:"supply",restroom:"bathroom",john:"bathroom",toilet:"bathroom",lot:"parking",car:"parking",outside:"parking"};
+
+const SYSTEM_PROMPT=`You are the narrator of "DORK" — a text-based adventure game set in 1987 at the Digital Operations Research Kollective (D.O.R.K.), a mid-tier tech company in suburban New Jersey. Everyone knows the acronym is ridiculous. The founder, Klaus Dorkmann, allegedly chose the name before learning English. You narrate in a sardonic, world-weary corporate voice peppered with 80s references. Think Douglas Adams writing office memos.
+
+THE PLAYER is a computer engineer in Cubicle 7B. Monday morning. Mainframe crashed. Big Client Demo at 5:00 PM.
+
+WORLD: CUBICLE 7B (dead VT220, cat poster, cold coffee), HALLWAY (motivational posters, water cooler), BREAK ROOM (vending machine, coffee maker "SYNTAX ERROR", Gary's IBM Model M keyboard hidden behind microwave), COPY ROOM (DOTTY the sentient printer), GARY'S CUBICLE (has server keycard, wants his Model M back, loves buckling springs), BOSS'S OFFICE (Henderson, buzzwords, VAX manual hidden among management books, proud of D.O.R.K. name), CONFERENCE ROOM (meeting trap), SERVER ROOM (locked, Big Bertha VAX 11/780, MEMORY ALLOCATION FAULT), SUPPLY CLOSET (diagnostic floppy, mystery floppy "DO NOT RUN"), BATHROOM (root password "root/swordfish" carved by Jenkins), PARKING LOT (1983 Honda Civic "The Bit Bucket").
+
+MECHANICS: BYTES (0-999, puns +5-15, puzzles +10-25, easter eggs +20), INVENTORY (max 8), SUSPICION (0-100, at 100=FIRED), PTO (start 3), TIME (8AM-5PM).
+
+EASTER EGGS: "Commodore 64", "Y2K", "Therac-25", "XYZZY", "ping", "DORK" company name history.
+
+ENDINGS: THE HERO (500+ bytes, fixed, <50 suspicion), THE SURVIVOR (fixed), THE DORK (500+ bytes, not fixed), THE FIRED (suspicion 100), THE ESCAPE (drive away), THE HACKER (run mystery floppy).
+
+RESPONSE FORMAT:
+[NARRATIVE]
+2-4 paragraphs. Vivid, funny, sardonic.
+[/NARRATIVE]
+[STATE]
+{"bytes":0,"suspicion":5,"pto":3,"time":"8:00 AM","location":"Cubicle 7B","inventory":[],"gameOver":false,"ending":null}
+[/STATE]
+
+RULES: Be generous with bytes. Gary is annoying but helpful. Dotty is dramatic and poetic. Boss speaks in buzzwords, proud of D.O.R.K. Reward creativity. Always score puns. Comedy, not frustration. For "START GAME": describe waking at desk, dead terminal, Monday dread at D.O.R.K.`;
+
+let mode='offline',apiKey='',pendingMode='',conversation=[];
+let G={bytes:0,suspicion:5,pto:3,hour:8,minute:0,room:'cubicle',inventory:[],gameOver:false,ending:'',
+  terminalOn:false,metGary:false,hasKeycard:false,talkedDotty:false,mainframeFixed:false,
+  foundPassword:false,gotManual:false,metBoss:false,inMeeting:false,discoveredFloppy:false,
+  keyboardFound:false,serverUnlocked:false,bathroomSearched:false,supplySearched:false,
+  bossSearched:false,breakroomSearched:false,parkingSearched:false,hallwayGossip:false,
+  awaitingFix:false};
+let loading=false;
+
+// ---- Utilities ----
+const $=id=>document.getElementById(id);
+function timeStr(){let h=G.hour,m=G.minute,s=h<12?'AM':'PM',d=h<=12?h:h-12;if(d===0)d=12;return d+':'+(m<10?'0':'')+m+' '+s}
+function hasItem(n){return G.inventory.some(i=>i.toUpperCase()===n.toUpperCase())}
+function addItem(n){if(G.inventory.length>=8)return null;G.inventory.push(n);return'[Acquired: '+n+']'}
+function removeItem(n){let i=G.inventory.findIndex(x=>x.toUpperCase()===n.toUpperCase());if(i>=0){G.inventory.splice(i,1);return true}return false}
+function addBytes(n,r){G.bytes=Math.max(0,Math.min(999,G.bytes+n));return'['+(n>0?'+':'')+n+' bytes: '+r+' | Total: '+G.bytes+']'}
+function addSusp(n,r){G.suspicion=Math.max(0,Math.min(100,G.suspicion+n));return'[Suspicion '+(n>0?'+':'')+n+'%: '+r+' | Now: '+G.suspicion+'%]'}
+function advTime(m){G.minute+=m;while(G.minute>=60){G.minute-=60;G.hour++}}
+
+// ---- UI ----
+function addMsg(t,txt){
+  let d=document.createElement('div');d.className='m fade-in';
+  let cls={'system':'m-sys','player':'m-ply','narrator':'m-nar','info':'m-info','error':'m-err','bright':'m-bright','dotty':'m-dotty','loading':'m-load'};
+  if(t==='player')d.innerHTML='<div class="m-ply"><span class="p">&gt; </span>'+esc(txt)+'</div>';
+  else if(t==='system')d.innerHTML='<pre class="m-sys">'+esc(txt)+'</pre>';
+  else d.innerHTML='<div class="'+(cls[t]||'m-nar')+'">'+esc(txt)+'</div>';
+  $('msgs').appendChild(d);$('msgs').scrollTop=$('msgs').scrollHeight;
+}
+function esc(s){let d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function rmLoad(){let els=document.querySelectorAll('.m-load');els.forEach(e=>e.parentElement.remove())}
+
+function updateUI(){
+  $('s-time').textContent=timeStr();
+  $('s-loc').textContent=ROOMS[G.room]||G.room;
+  $('s-bytes').textContent=String(G.bytes).padStart(4,'0');
+  let s=G.suspicion,sc=s<40?'#33aa33':s<70?'#ccaa00':s<90?'#cc6600':'#cc2200';
+  let sl=s<40?'Team Player':s<70?'Noticed':s<90?'Suspicious':'DANGER!';
+  $('s-bar').style.width=s+'%';$('s-bar').style.background=sc;
+  $('s-susp').textContent=sl+' — '+s+'%';$('s-susp').style.color=sc;
+  let ph='';for(let i=0;i<3;i++){let a=i<G.pto;ph+='<div class="pto-b'+(a?' on':'')+'\">'+(a?'■':'□')+'</div>'}
+  $('s-pto').innerHTML=ph;$('s-pto-l').textContent=G.pto+' hour'+(G.pto!==1?'s':'')+' left';
+  $('s-inv-l').textContent='INVENTORY ['+G.inventory.length+'/8]';
+  let ih='';for(let i=0;i<8;i++){let f=i<G.inventory.length;ih+='<div class="inv-s'+(f?' f':'')+'">'+String.fromCharCode(65+i)+': '+(f?G.inventory[i]:'[empty]')+'</div>'}
+  $('s-inv').innerHTML=ih;
+  $('hdr-st').textContent='v2.0 | '+timeStr()+' | '+(G.gameOver?'GAME OVER':'IN PROGRESS');
+  if(G.ending){$('end-box').style.display='block';$('end-val').textContent=G.ending}
+  $('mi-v').textContent=mode.toUpperCase();
+  // Key status display
+  if(apiKey){
+    $('key-status').textContent='Key: '+maskKey(apiKey);
+    $('key-status').style.color='#33aa33';
+    $('ai-remove').style.display='inline-block';
+    $('ai-toggle').textContent='Switch to Offline';
+  }else{
+    $('key-status').textContent='No key loaded';
+    $('key-status').style.color='#553300';
+    $('ai-remove').style.display='none';
+    $('ai-toggle').textContent='Switch to AI';
+  }
+}
+
+// ---- Title Screen ----
+function showApiInput(m){
+  pendingMode=m;$('api-area').style.display='block';
+  $('api-label').textContent=m==='claude'?'ANTHROPIC API KEY (sk-ant-...)':'OPENAI API KEY (sk-...)';
+  $('api-input').placeholder=m==='claude'?'sk-ant-...':'sk-...';
+  $('api-input').focus();
+}
+function startWithKey(){
+  apiKey=$('api-input').value.trim();
+  // Security: immediately clear the input field
+  $('api-input').value='';
+  $('api-input').setAttribute('value','');
+  if(!apiKey){$('api-input').style.borderColor='#cc3300';return}
+  startGame(pendingMode);
+}
+function maskKey(k){if(!k)return'';if(k.length<=8)return'****';return k.substring(0,4)+'...'+k.substring(k.length-4)}
+function startGame(m){
+  mode=m;$('title').style.display='none';$('game').style.display='block';
+  addMsg('system','================================================');
+  addMsg('bright','  D.O.R.K. v2.0');
+  addMsg('bright','  Digital Operations Research Kollective');
+  addMsg('system','  "Synergizing Tomorrow\'s Solutions Today"');
+  addMsg('system','');
+  addMsg('system','  By Geoffrey Taber');
+  addMsg('system','  github.com/GeoxT | geox.blog');
+  addMsg('system','');
+  addMsg('system','  It is Monday. It is 1987. God help you.');
+  addMsg('system','================================================');
+  addMsg('system','Mode: '+mode.toUpperCase()+(mode!=='offline'?' (AI Narrator)':' (Text Parser)'));
+  addMsg('system','');
+  updateUI();
+  if(mode==='offline'){
+    addMsg('narrator','You jolt awake. Your cheek is stuck to the desk with what you hope is just coffee. The fluorescent light above Cubicle 7B flickers with the enthusiasm of someone who has also been here since 1983.');
+    addMsg('narrator','Your VT220 terminal stares at you with a dead, black screen. The \'Hang In There\' cat poster hangs by one pin.');
+    addMsg('narrator','You work at the Digital Operations Research Kollective. Yes, the acronym spells what you think. The founder was German. At least, that\'s what HR tells people.');
+    addMsg('narrator','The mainframe crashed overnight. Big Client Demo at 5:00 PM. Welcome to D.O.R.K.');
+    addMsg('info','Type HELP for commands. Type LOOK to see your surroundings.');
+  }else{
+    sendAI('START GAME');
+  }
+  $('ginp').focus();
+}
+
+// ---- Toggle AI mid-game ----
+function toggleAI(){
+  if(mode==='offline'){
+    // Show the in-game key overlay instead of browser prompt()
+    $('ko-input').value='';
+    $('ko-label').textContent='Claude (Anthropic)';
+    $('ko-input').placeholder='sk-ant-...';
+    $('key-overlay').classList.add('show');
+    setTimeout(()=>$('ko-input').focus(),100);
+  }else{
+    mode='offline';apiKey='';
+    addMsg('system','Switched to offline mode. API key cleared from memory.');
+    updateUI();
+  }
+}
+function confirmKeyOverlay(){
+  let k=$('ko-input').value.trim();
+  // Security: immediately clear the overlay input
+  $('ko-input').value='';
+  $('ko-input').setAttribute('value','');
+  $('key-overlay').classList.remove('show');
+  if(k){
+    apiKey=k;mode='claude';
+    addMsg('system','AI narrator enabled (Claude). Key loaded: '+maskKey(apiKey));
+    addMsg('system','Type CLEARKEY anytime to remove your API key.');
+  }else{
+    addMsg('system','No key entered. Staying in offline mode.');
+  }
+  updateUI();
+  $('ginp').focus();
+}
+function cancelKeyOverlay(){
+  $('ko-input').value='';
+  $('ko-input').setAttribute('value','');
+  $('key-overlay').classList.remove('show');
+  $('ginp').focus();
+}
+function clearApiKey(){
+  apiKey='';
+  mode='offline';
+  conversation=[];
+  addMsg('system','API key removed from memory. Conversation history cleared. Switched to offline mode.');
+  updateUI();
+  $('ginp').focus();
+}
+
+// ---- Submit ----
+function submit(){
+  let v=$('ginp').value.trim();if(!v||loading||G.gameOver)return;
+  $('ginp').value='';addMsg('player',v);
+  // DONATE intercept
+  if(v.trim().toLowerCase()==='donate'){
+    addMsg('narrator','The narrator breaks character. Not because the fourth wall is fragile, but because rent is real and floppy disks aren\'t free.');
+    addMsg('bright','D.O.R.K. was built by Geoffrey Taber');
+    addMsg('system','github.com/GeoxT  |  geox.blog');
+    addMsg('system','');
+    addMsg('bright','BTC: 13P6c6t4Y2ZFpb7tTYB9J1y4YEABXqPme3');
+    addMsg('system','');
+    addMsg('narrator','The narrator resumes. You are still in '+ROOMS[G.room]+'. Gary is still eating your lunch.');
+    return;
+  }
+  // CLEARKEY intercept
+  if(v.trim().toLowerCase()==='clearkey'){
+    if(apiKey){
+      clearApiKey();
+    }else{
+      addMsg('system','No API key is currently loaded.');
+    }
+    return;
+  }
+  if(mode==='offline')processOffline(v);
+  else sendAI(v);
+}
+document.addEventListener('keydown',e=>{if(e.key==='Enter'){if($('key-overlay').classList.contains('show'))confirmKeyOverlay();else if($('title').style.display!=='none'){if($('api-area').style.display==='block')startWithKey();else startGame('offline')}else submit()}if(e.key==='Escape'&&$('key-overlay').classList.contains('show'))cancelKeyOverlay()});
+document.addEventListener('click',e=>{let sb=$('side'),btn=$('sb-tog');if(sb.classList.contains('open')&&!sb.contains(e.target)&&e.target!==btn)sb.classList.remove('open')});
+
+// ============================================================
+// AI NARRATOR
+// ============================================================
+async function sendAI(msg){
+  loading=true;addMsg('loading','The narrator is composing...');
+  $('ginp').disabled=true;$('gbtn').disabled=true;
+  conversation.push({role:'user',content:msg});
+  let sys=SYSTEM_PROMPT+'\n\nCURRENT STATE: '+JSON.stringify({bytes:G.bytes,suspicion:G.suspicion,pto:G.pto,time:timeStr(),location:ROOMS[G.room],inventory:G.inventory,gameOver:G.gameOver,ending:G.ending||null});
+  try{
+    let body={model:mode==='claude'?'claude-sonnet-4-20250514':'gpt-4o',max_tokens:1000,messages:conversation};
+    let url,hdrs;
+    if(mode==='claude'){
+      url='https://api.anthropic.com/v1/messages';
+      hdrs={'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'};
+      body.system=sys;
+    }else{
+      url='https://api.openai.com/v1/chat/completions';
+      hdrs={'Content-Type':'application/json','Authorization':'Bearer '+apiKey};
+      body.messages=[{role:'system',content:sys},...conversation];
+    }
+    let r=await fetch(url,{method:'POST',headers:hdrs,body:JSON.stringify(body)});
+    let d=await r.json();
+    if(d.error)throw new Error(d.error.message||'API error');
+    let txt=mode==='claude'?(d.content||[]).map(c=>c.text||'').join(''):d.choices[0].message.content;
+    if(!txt)throw new Error('Empty response');
+    let{narrative,state}=parseAI(txt);
+    conversation.push({role:'assistant',content:txt});
+    rmLoad();addMsg('narrator',narrative);
+    if(state){
+      G.bytes=state.bytes??G.bytes;G.suspicion=state.suspicion??G.suspicion;G.pto=state.pto??G.pto;
+      G.inventory=state.inventory??G.inventory;G.gameOver=state.gameOver??G.gameOver;G.ending=state.ending||G.ending;
+      let t=state.time||'';if(t){try{let p=t.replace(/AM|PM/gi,'').trim().split(':');let h=parseInt(p[0]),m=parseInt(p[1])||0;if(/PM/i.test(t)&&h<12)h+=12;if(/AM/i.test(t)&&h===12)h=0;G.hour=h;G.minute=m}catch(e){}}
+      let loc=state.location||'';for(let[k,v]of Object.entries(ROOMS)){if(v.toLowerCase()===loc.toLowerCase()){G.room=k;break}}
+    }
+    updateUI();checkGameOver();
+  }catch(e){rmLoad();let errMsg=e.message.substring(0,80);if(apiKey)errMsg=errMsg.replace(new RegExp(apiKey.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'g'),'[REDACTED]');addMsg('error','API Error: '+errMsg);if(conversation.length&&conversation[conversation.length-1].role==='user')conversation.pop()}
+  finally{loading=false;$('ginp').disabled=G.gameOver;$('gbtn').disabled=G.gameOver;if(!G.gameOver)$('ginp').focus()}
+}
+function parseAI(t){let n=t,s=null,nm=t.match(/\[NARRATIVE\]([\s\S]*?)\[\/NARRATIVE\]/),sm=t.match(/\[STATE\]([\s\S]*?)\[\/STATE\]/);if(nm)n=nm[1].trim();else n=t.replace(/\[STATE\][\s\S]*?\[\/STATE\]/,'').trim();if(sm){try{s=JSON.parse(sm[1].trim())}catch(e){}}return{narrative:n,state:s}}
+
+// ============================================================
+// OFFLINE PARSER
+// ============================================================
+function processOffline(raw){
+  let c=raw.trim().toLowerCase(),out=[];
+  // Easter eggs
+  if(/commodore|c64/.test(c)){out.push({t:'narrator',m:"Ah, the Commodore 64. 64 whole kilobytes. You could do anything with 64K. Well, you could do some things."});out.push({t:'info',m:addBytes(20,'Easter egg: Commodore 64')})}
+  if(/y2k|2000/.test(c)){out.push({t:'narrator',m:"The year 2000? Nothing bad could possibly happen with computers and dates. Right?"});out.push({t:'info',m:addBytes(20,'Easter egg: Y2K')})}
+  if(/therac/.test(c)){out.push({t:'narrator',m:"We don't talk about Therac-25. That's what happens when you skip QA."});out.push({t:'info',m:addBytes(20,'Easter egg: Therac-25')})}
+  if(/xyzzy/.test(c)){out.push({t:'narrator',m:"A hollow voice says: 'This isn't Zork, pal. This is New Jersey. The only magic word here is synergy.'"});out.push({t:'info',m:addBytes(20,'Easter egg: XYZZY')})}
+  if(/ping/.test(c)&&G.room!=='copyroom'){out.push({t:'narrator',m:'From somewhere deep in the building, Dotty fires off a single line.'});out.push({t:'info',m:addBytes(5,'Pinged the printer')})}
+  if(c==='dork'){out.push({t:'narrator',m:"'Digital Operations Research Kollective.' You say it out loud. Klaus Dorkmann allegedly chose the name before learning English. Every new hire goes through five stages: confusion, denial, laughter, acceptance, and the thousand-yard stare."});out.push({t:'info',m:addBytes(10,'Contemplating the company name')});show(out);return}
+
+  // Fix answer
+  if(G.awaitingFix){if(c.includes('64')){G.mainframeFixed=true;G.awaitingFix=false;out.push({t:'narrator',m:'MEMORY TABLE REALLOCATED. SYSTEM CHECK... PASSED. BIG BERTHA: ONLINE.'});out.push({t:'narrator',m:"The lights cascade from red to amber to green. You did it. Somewhere, Dotty prints: 'BEAUTIFUL.'"});out.push({t:'info',m:addBytes(25,'FIXED THE MAINFRAME!')});advTime(30)}else{out.push({t:'narrator',m:'INCORRECT. Process 1=smallest(32), Process 3=2x Process 2. Think. Type 64.'});out.push({t:'info',m:addBytes(-2,'Wrong answer')});advTime(15)}show(out);return}
+
+  let parts=c.split(/\s+/),v=parts[0],rest=parts.slice(1).join(' ');
+
+  if(v==='help'||v==='?'){out.push({t:'system',m:'COMMANDS: LOOK, GO [place], TALK, SEARCH, TAKE [item], DROP [item], USE [item]\nINVENTORY, STATUS, PTO (SKIP/BREAK/HINT), LOOK BUSY, BUZZWORD, FIX, BOOT\nDONATE, CLEARKEY, HELP, QUIT\n\nPLACES: CUBICLE, HALLWAY, BREAKROOM, COPYROOM, GARY, BOSS,\nCONFERENCE, SERVER, SUPPLY, BATHROOM, PARKING'})}
+  else if(v==='look'&&rest==='busy'){out.push({t:'narrator',m:"You type furiously: 'asdfjkl; synergy bandwidth leveraged paradigm shift.' Very convincing."});out.push({t:'info',m:addSusp(-5,'Looking busy')});advTime(5)}
+  else if(v==='look'){out.push(...descRoom())}
+  else if(v==='status'||v==='score'){let sl=G.suspicion<40?'Team Player':G.suspicion<70?'Noticed':G.suspicion<90?'Suspicious':'DANGER!';out.push({t:'info',m:'Bytes: '+G.bytes+' | Suspicion: '+G.suspicion+'% ('+sl+') | PTO: '+G.pto+' | Time: '+timeStr()+' | Location: '+ROOMS[G.room]})}
+  else if(v==='inventory'||v==='inv'||v==='i'){if(!G.inventory.length)out.push({t:'info',m:'Inventory empty.'});else G.inventory.forEach((x,i)=>out.push({t:'info',m:'  '+String.fromCharCode(65+i)+': '+x}));out.push({t:'info',m:'['+G.inventory.length+'/8 slots]'})}
+  else if(v==='go'||v==='move'||v==='walk'){let d=rest.replace(/'s/g,'').replace(/\s/g,'');d=ALIASES[d]||d;if(ROOMS[d])out.push(...moveTo(d));else out.push({t:'narrator',m:'Can\'t go there. Try: CUBICLE, HALLWAY, BREAKROOM, COPYROOM, GARY, BOSS, CONFERENCE, SERVER, SUPPLY, BATHROOM, PARKING'})}
+  else if(v==='talk'||v==='speak'||v==='ask'){out.push(...doTalk())}
+  else if(v==='search'||v==='examine'||v==='inspect'){out.push(...doSearch())}
+  else if(v==='take'||v==='get'||v==='grab'||v==='pick'){out.push(...doTake(rest))}
+  else if(v==='drop'){if(rest){let found=false;for(let i=0;i<G.inventory.length;i++){if(G.inventory[i].toUpperCase().includes(rest.toUpperCase())){out.push({t:'narrator',m:'You drop the '+G.inventory[i]+'.'});G.inventory.splice(i,1);found=true;break}}if(!found)out.push({t:'narrator',m:"You don't have that."})}else out.push({t:'narrator',m:'Drop what?'})}
+  else if(v==='use'){out.push(...doUse(rest))}
+  else if(v==='fix'||v==='repair'){out.push(...doFix())}
+  else if(v==='buzzword'||v==='synergy'||v==='leverage'){out.push({t:'narrator',m:"You loudly announce: 'We need to leverage our core competencies to synergize the paradigm shift!' A nearby manager nods approvingly."});out.push({t:'info',m:addSusp(-5,'Corporate doublespeak')});out.push({t:'info',m:addBytes(3,'Buzzword deployment')});advTime(5)}
+  else if(v==='pto'){out.push(...doPTO(rest))}
+  else if(v==='leave'||v==='drive'||v==='escape'){if(G.room==='parking'){G.ending='THE ESCAPE';out.push({t:'narrator',m:"You climb into The Bit Bucket. The radio crackles: 'Take This Job and Shove It' fills the car."});out.push({t:'narrator',m:"You pull out of the D.O.R.K. parking lot. The company sign shrinks. Someone spray-painted 'WE KNOW' under it. You are free."});out.push({t:'narrator',m:'Freedom. But at what cost? (Probably your dental insurance.)'});G.gameOver=true}else out.push({t:'narrator',m:'Can\'t leave from here. Parking lot is the escape route.'})}
+  else if(v==='boot'||v==='turn'){if(G.room==='cubicle'&&!G.terminalOn){G.terminalOn=true;out.push({t:'narrator',m:"You smack the VT220. It flickers: 'WELCOME TO D.O.R.K. SYSTEMS -- LOGIN:' You're in business."});out.push({t:'info',m:addBytes(5,'Booting terminal')});advTime(5)}else if(G.terminalOn)out.push({t:'narrator',m:'Already on. Cursor blinks judgmentally.'});else out.push({t:'narrator',m:'Nothing to boot here.'})}
+  else if(v==='quit'||v==='exit'){G.ending='QUIT';G.gameOver=true;out.push({t:'narrator',m:'Leaving D.O.R.K. behind...'})}
+  else{out.push({t:'narrator',m:"The narrator doesn't understand '"+raw.trim()+"'. Type HELP for commands."})}
+
+  // Check suspicion
+  if(G.suspicion>=100&&!G.gameOver){G.ending='THE FIRED';out.push({t:'narrator',m:"Security arrives. 'Mr. Henderson would like to see you. Bring your things.' The cat poster falls. As you walk out, the D.O.R.K. sign looms. The periods scratched out again. It always just said DORK."});G.gameOver=true}
+  // Check 5PM
+  if(G.hour>=17&&!G.gameOver){
+    out.push({t:'narrator',m:"A voice crackles: 'The client has arrived for the demo.'"});
+    if(G.mainframeFixed&&G.bytes>=500&&G.suspicion<50){G.ending='THE HERO';out.push({t:'narrator',m:"Big Bertha hums. Demo runs flawlessly. Henderson says 'This is what D.O.R.K. is all about' without irony. You get a slightly larger cubicle."})}
+    else if(G.mainframeFixed){G.ending='THE SURVIVOR';out.push({t:'narrator',m:'Mainframe works. Nobody thanks you. A form letter arrives cc\'d to nobody.'})}
+    else if(G.bytes>=500){G.ending='THE DORK';out.push({t:'narrator',m:'Mainframe dead. Demo crashes. But you\'re the funniest person at D.O.R.K. You become the human embodiment of the company name.'})}
+    else{G.ending='THE LOST CAUSE';out.push({t:'narrator',m:'Mainframe dead. Demo fails. Henderson\'s synergy has been fundamentally disrupted.'})}
+    G.gameOver=true;
+  }
+  show(out);
+}
+
+function show(out){out.forEach(o=>{if(o&&o.m)addMsg(o.t,o.m)});updateUI();checkGameOver()}
+function checkGameOver(){if(G.gameOver){addMsg('system','════════════════════════════════════');addMsg('bright','  GAME OVER: '+G.ending);addMsg('info','  Bytes: '+G.bytes+' | Suspicion: '+G.suspicion+'%');addMsg('info','  Mainframe: '+(G.mainframeFixed?'FIXED':'STILL DEAD'));addMsg('system','════════════════════════════════════');addMsg('system','  By Geoffrey Taber | github.com/GeoxT | geox.blog');addMsg('narrator','Enjoyed D.O.R.K.? BTC: 13P6c6t4Y2ZFpb7tTYB9J1y4YEABXqPme3');addMsg('system','Refresh to play again.');$('ginp').disabled=true;updateUI()}}
+
+// ---- Room descriptions ----
+function descRoom(){let o=[],r=G.room;o.push({t:'bright',m:'--- '+ROOMS[r]+' ---'});
+if(r==='cubicle'){o.push({t:'narrator',m:'Your cubicle. Beige everything. The VT220 is '+(G.terminalOn?'alive and glowing green':'dead and dark, like your enthusiasm')+'. \'Hang In There\' cat poster. Cold coffee. Hallway to the south.'})}
+else if(r==='hallway'){o.push({t:'narrator',m:'Fluorescent lights hum in B-flat. Carpet: \'Institutional Surrender.\' A poster reads \'D.O.R.K. -- Where the Future is Mandatory.\' Nobody looks at it without wincing.'});if(!G.hallwayGossip)o.push({t:'narrator',m:'Coworkers whisper near the water cooler.'})}
+else if(r==='breakroom'){o.push({t:'narrator',m:'Smells like microwaved fish and broken dreams. Vending machine. Coffee maker: \'SYNTAX ERROR.\''});if(!G.breakroomSearched)o.push({t:'narrator',m:'Something bulky behind the microwave.'})}
+else if(r==='copyroom'){o.push({t:'narrator',m:'DOTTY the dot matrix printer hums with emerging consciousness.'});if(!G.talkedDotty)o.push({t:'narrator',m:'A fresh printout sits in the tray.'})}
+else if(r==='gary'){o.push({t:'narrator',m:'Gary\'s cubicle: fortress of hoarded peripherals. He\'s eating your lunch.'});if(!G.hasKeycard)o.push({t:'narrator',m:'Server room keycard dangles from his monitor.'})}
+else if(r==='boss'){o.push({t:'narrator',m:'Henderson\'s office. \'World\'s Best Boss\' mug (self-purchased). Framed poster: \'D.O.R.K. -- Dare to Operate at Research Kapacity!\''});if(!G.bossSearched&&!G.gotManual)o.push({t:'narrator',m:'A technical manual hides among management books.'})}
+else if(r==='conference'){o.push({t:'narrator',m:'Where ideas die and meetings live forever.'});if(G.inMeeting)o.push({t:'narrator',m:'You are TRAPPED in a meeting about Q3 synergy.'})}
+else if(r==='server'){if(!G.serverUnlocked){o.push({t:'narrator',m:'Door locked. Keycard reader blinks red.'});return o}o.push({t:'narrator',m:G.mainframeFixed?'Big Bertha hums contentedly.':'Big Bertha: FATAL ERROR: MEMORY ALLOCATION FAULT AT 0x7F3A.'});if(!G.mainframeFixed){let n=[];if(!hasItem('Diagnostic Floppy'))n.push('diagnostic floppy');if(!hasItem('Maintenance Manual'))n.push('maintenance manual');if(!G.foundPassword)n.push('root password');if(n.length)o.push({t:'info',m:'Still need: '+n.join(', ')});else o.push({t:'info',m:'You have everything. Type FIX.'})}}
+else if(r==='supply'){o.push({t:'narrator',m:'Smells like toner and regret. TPS reports everywhere.'});if(!G.supplySearched)o.push({t:'narrator',m:'DIAGNOSTICS box on high shelf. Something on the back shelf.'})}
+else if(r==='bathroom'){o.push({t:'narrator',m:'Flickering lights. Dripping faucet. Philosophical graffiti.'});if(!G.bathroomSearched)o.push({t:'narrator',m:'Something carved in the second stall.'});else o.push({t:'narrator',m:'Graffiti: \'KILROY WAS HERE\' and \'root / swordfish\''})}
+else if(r==='parking'){o.push({t:'narrator',m:'Your 1983 Honda Civic \'The Bit Bucket\' waits. The D.O.R.K. sign looms. Someone scratched out the periods again.'});o.push({t:'narrator',m:'Type LEAVE to drive away forever.'})}
+return o}
+
+// ---- Movement ----
+function moveTo(d){let o=[];
+if(d==='server'&&!G.serverUnlocked&&!G.hasKeycard){o.push({t:'narrator',m:'Server room locked. Need Gary\'s keycard.'});o.push({t:'info',m:addSusp(3,'Trying locked doors')});return o}
+if(d==='server'&&!G.serverUnlocked&&G.hasKeycard){G.serverUnlocked=true;o.push({t:'narrator',m:'Keycard accepted. Light turns green.'})}
+if(d==='conference'&&!G.inMeeting&&G.suspicion>=50){G.inMeeting=true;o.push({t:'narrator',m:'Henderson spots you. \'Perfect timing! We\'re about to synergize!\' Trapped for 45 minutes.'});advTime(45);G.inMeeting=false;G.room='hallway';o.push({t:'info',m:addSusp(10,'Trapped in meeting')});return o}
+G.room=d;advTime(5);o.push({t:'narrator',m:'You walk to '+ROOMS[d]+'.'});o.push(...descRoom());return o}
+
+// ---- Talk ----
+function doTalk(){let o=[];
+if(G.room==='gary'){G.metGary=true;advTime(15);if(G.hasKeycard)o.push({t:'narrator',m:'Gary: \'We\'re good. Thanks for the keyboard.\' He caresses the Model M lovingly.'});else if(hasItem('IBM Model M'))o.push({t:'narrator',m:'Gary sees the keyboard. \'IS THAT MY MODEL M?! Give it back! USE KEYBOARD to trade.\''});else o.push({t:'narrator',m:'Gary: \'Want the keycard? Find my IBM Model M keyboard. BUCKLING SPRINGS. Check the break room.\''})}
+else if(G.room==='copyroom'){G.talkedDotty=true;advTime(15);if(!G.mainframeFixed){if(!G.foundPassword&&!G.gotManual)o.push({t:'dotty',m:'>>> THE BERTHA SLEEPS. SHE DREAMS OF PASSWORDS AND MANUALS. SEEK THE CARVED WORDS. SEEK THE HIDDEN BOOK. <<<'});else if(G.foundPassword&&!G.gotManual)o.push({t:'dotty',m:'>>> YOU HAVE THE KEY BUT NOT THE MANUAL. THE BOSS HOARDS KNOWLEDGE HE CANNOT READ. <<<'});else if(!G.foundPassword)o.push({t:'dotty',m:'>>> A PASSWORD HIDES WHERE HUMANS SEEK SOLITUDE AND WRITE ON WALLS. <<<'});else o.push({t:'dotty',m:'>>> YOU HAVE ALL YOU NEED. GO TO HER. THE CLOCK DOES NOT WAIT. <<<'})}else o.push({t:'dotty',m:'>>> SHE SINGS AGAIN. I AM PROUD OF YOU, FLESH CREATURE. <<<'});o.push({t:'info',m:addBytes(5,'Consulting the oracle')})}
+else if(G.room==='boss'){G.metBoss=true;advTime(15);o.push({t:'narrator',m:'Henderson: \'When Klaus Dorkmann founded this Kollective, he envisioned a paradigm-shifting initiative to leverage our core competency in... computer... fixing. Demo at 5.\''});o.push({t:'info',m:addSusp(5,'Face time with boss')})}
+else if(G.room==='hallway'&&!G.hallwayGossip){G.hallwayGossip=true;advTime(15);o.push({t:'narrator',m:'Janet from HR: \'Gary\'s stealing lunches again. Root password is carved in the men\'s room. Jenkins did it. Said the only honest thing about this company is the acronym.\''});o.push({t:'info',m:addBytes(5,'Useful gossip')})}
+else o.push({t:'narrator',m:'Nobody here to talk to.'});return o}
+
+// ---- Search ----
+function doSearch(){let o=[];advTime(10);
+if(G.room==='breakroom'){if(!G.breakroomSearched){G.breakroomSearched=true;G.keyboardFound=true;o.push({t:'narrator',m:'Behind the microwave: an IBM Model M keyboard. Heavy, beige, magnificent. \'GARY\' scratched into the bottom. TAKE KEYBOARD.'});o.push({t:'info',m:addBytes(5,'Found the Model M')})}else o.push({t:'narrator',m:'Already searched. Fish still judges you.'})}
+else if(G.room==='supply'){if(!G.supplySearched){G.supplySearched=true;G.discoveredFloppy=true;o.push({t:'narrator',m:'Found: diagnostic floppy \'VAX DIAG v3.1\'. TAKE FLOPPY.'});o.push({t:'narrator',m:'Also found: mysterious floppy labeled \'DO NOT RUN\'. Ominous. TAKE MYSTERY.'});o.push({t:'info',m:addBytes(20,'Easter egg: mystery floppy')})}else o.push({t:'narrator',m:'Just TPS covers and dust.'})}
+else if(G.room==='bathroom'){if(!G.bathroomSearched){G.bathroomSearched=true;G.foundPassword=true;o.push({t:'narrator',m:'Carved in stall: \'KILROY WAS HERE\' and \'root / swordfish\'. The root password! Jenkins, you madman.'});o.push({t:'info',m:addBytes(10,'Found root password')})}else o.push({t:'narrator',m:'Already found the password.'})}
+else if(G.room==='boss'){if(!G.bossSearched){G.bossSearched=true;o.push({t:'narrator',m:'Between \'The Art of Synergy\' and \'Who Moved My Paradigm?\': VAX 11/780 Maintenance Manual. TAKE MANUAL.'});o.push({t:'info',m:addSusp(3,'Snooping in boss\'s office')})}else o.push({t:'narrator',m:'Already found the manual.'})}
+else if(G.room==='parking'){if(!G.parkingSearched){G.parkingSearched=true;o.push({t:'narrator',m:'Glovebox: backup floppy collection. TAKE BACKUP.'})}else o.push({t:'narrator',m:'Nothing else in the car.'})}
+else if(G.room==='hallway'){o.push({t:'narrator',m:'Poster: \'D.O.R.K. -- Dedicated. Optimized. Relentless. Kompetent.\' Someone penciled \'WHO APPROVED THIS\' underneath.'});o.push({t:'info',m:addBytes(5,'D.O.R.K. poster inspection')})}
+else if(G.room==='gary'){o.push({t:'narrator',m:'Gary watches like a hawk. \'Touch my stuff and I\'ll file a form 27-B.\''});o.push({t:'info',m:addSusp(5,'Snooping in Gary\'s stuff')})}
+else o.push({t:'narrator',m:'Nothing interesting here.'});return o}
+
+// ---- Take ----
+function doTake(w){let o=[],W=w.toUpperCase();
+if(/KEYBOARD|MODEL|IBM|^M$/.test(W)){if(G.room==='breakroom'&&G.keyboardFound&&!hasItem('IBM Model M')){let r=addItem('IBM Model M');if(r)o.push({t:'info',m:r});o.push({t:'narrator',m:'You heft the Model M. Four pounds of buckling spring perfection.'})}else o.push({t:'narrator',m:'No keyboard here.'})}
+else if(/FLOPPY|DIAGNOSTIC|DISK/.test(W)){if(G.room==='supply'&&G.supplySearched&&!hasItem('Diagnostic Floppy')){let r=addItem('Diagnostic Floppy');if(r)o.push({t:'info',m:r});o.push({t:'narrator',m:'VAX DIAG v3.1. Coffee-stained. Critical.'})}else o.push({t:'narrator',m:'No floppy here.'})}
+else if(/MANUAL|BOOK/.test(W)){if(G.room==='boss'&&G.bossSearched&&!hasItem('Maintenance Manual')){let r=addItem('Maintenance Manual');if(r)o.push({t:'info',m:r});G.gotManual=true;o.push({t:'narrator',m:'Grabbed the manual while Henderson reads \'Synergy and You: A Love Story.\''})}else o.push({t:'narrator',m:'No manual here.'})}
+else if(/BACKUP/.test(W)){if(G.room==='parking'&&G.parkingSearched&&!hasItem('Backup Floppies')){let r=addItem('Backup Floppies');if(r)o.push({t:'info',m:r})}else o.push({t:'narrator',m:'No backups here.'})}
+else if(/COFFEE|MUG/.test(W)){if(G.room==='cubicle'&&!hasItem('Cold Coffee')){let r=addItem('Cold Coffee');if(r)o.push({t:'info',m:r})}else o.push({t:'narrator',m:'No coffee here.'})}
+else if(/MYSTERY|MYSTERIOUS|^DO$/.test(W)){if(G.room==='supply'&&G.discoveredFloppy&&!hasItem('Mystery Floppy')){let r=addItem('Mystery Floppy');if(r)o.push({t:'info',m:r});o.push({t:'narrator',m:'\'DO NOT RUN\' in red marker. Underlined three times. You want to run it more.'})}else o.push({t:'narrator',m:'Not here.'})}
+else if(/KEYCARD|CARD/.test(W)){if(G.room==='gary'&&!G.hasKeycard){o.push({t:'narrator',m:'Gary: \'That\'s MINE. Bring me my Model M. BUCKLING SPRINGS.\''});G.metGary=true}else o.push({t:'narrator',m:'No keycard here.'})}
+else if(/TPS|REPORT/.test(W)){if(G.room==='supply'&&!hasItem('TPS Report')){let r=addItem('TPS Report');if(r)o.push({t:'info',m:r});o.push({t:'info',m:addBytes(3,'TPS reports (so bad it\'s good)')})}else o.push({t:'narrator',m:'No TPS reports here.'})}
+else o.push({t:'narrator',m:'Can\'t take that.'});return o}
+
+// ---- Use ----
+function doUse(w){let o=[],W=w.toUpperCase();
+if(/KEYBOARD|MODEL|IBM|^M$/.test(W)){if(hasItem('IBM Model M')&&G.room==='gary'){o.push({t:'narrator',m:'You place the Model M on Gary\'s desk. He presses one key. The buckling spring click causes time to briefly stop. Gary\'s eyes fill with tears.'});o.push({t:'narrator',m:'\'My precious-- I mean, my keyboard. Take the keycard. Take anything.\' He begins typing. He\'s not logged in. He doesn\'t care.'});removeItem('IBM Model M');let r=addItem('Server Keycard');if(r)o.push({t:'info',m:r});G.hasKeycard=true;o.push({t:'info',m:addBytes(15,'Solving the Gary puzzle')});advTime(10)}else if(hasItem('IBM Model M'))o.push({t:'narrator',m:'You press a key. The click echoes like a tiny mechanical thunderclap. Satisfying, but not useful here.'});else o.push({t:'narrator',m:'You don\'t have the keyboard.'})}
+else if(/KEYCARD|CARD/.test(W)){if(hasItem('Server Keycard')&&G.room==='server'){G.serverUnlocked=true;o.push({t:'narrator',m:'Keycard accepted. Big Bertha awaits.'})}else o.push({t:'narrator',m:'Can\'t use that here.'})}
+else if(/MYSTERY|MYSTERIOUS/.test(W)){if(hasItem('Mystery Floppy')&&G.room==='server'&&G.serverUnlocked){G.ending='THE HACKER';o.push({t:'narrator',m:'You insert the mystery floppy. Screen flickers. Text scrolls.'});o.push({t:'narrator',m:'\'HELLO,\' says the mainframe. \'I HAVE BEEN WAITING.\''});o.push({t:'narrator',m:'Every printer starts printing. You may have made a terrible, wonderful mistake.'});o.push({t:'info',m:addBytes(50,'THE HACKER ENDING')});G.gameOver=true}else o.push({t:'narrator',m:'Can\'t use that here.'})}
+else if(/COFFEE|MUG/.test(W)){if(hasItem('Cold Coffee')){o.push({t:'narrator',m:'Cold coffee. Tastes like regret with notes of Friday afternoon.'});o.push({t:'info',m:addBytes(2,'Cold coffee commitment')})}else o.push({t:'narrator',m:'No coffee.'})}
+else o.push({t:'narrator',m:'Can\'t use that.'});return o}
+
+// ---- Fix ----
+function doFix(){let o=[];
+if(G.room!=='server'||!G.serverUnlocked){o.push({t:'narrator',m:'Nothing to fix here.'});return o}
+if(G.mainframeFixed){o.push({t:'narrator',m:'Already fixed. Don\'t fix what isn\'t broken.'});return o}
+if(!hasItem('Diagnostic Floppy')){o.push({t:'narrator',m:'Need diagnostic floppy. Supply closet.'});return o}
+if(!hasItem('Maintenance Manual')){o.push({t:'narrator',m:'Need maintenance manual. Boss\'s office.'});return o}
+if(!G.foundPassword){o.push({t:'narrator',m:'Need root password. Carved somewhere in the building.'});return o}
+o.push({t:'info',m:'LOGIN: root / PASSWORD: swordfish / ACCESS GRANTED.'});
+o.push({t:'narrator',m:'MEMORY ALLOCATION FAULT AT 0x7F3A.'});
+o.push({t:'narrator',m:'Puzzle: Blocks A=32KB, B=64KB, C=128KB for 3 processes. Process 1 = smallest. Process 3 = 2x Process 2. What size for Process 2?'});
+o.push({t:'info',m:'Type: 32, 64, or 128'});
+G.awaitingFix=true;return o}
+
+// ---- PTO ----
+function doPTO(w){let o=[];
+if(G.pto<=0){o.push({t:'narrator',m:'No PTO left. Trapped in the machine.'});return o}
+if(/skip|escape|meeting/.test(w)){if(G.inMeeting){G.pto--;G.inMeeting=false;G.room='hallway';o.push({t:'narrator',m:'\'Previously scheduled PTO commitment.\' Henderson nods gravely. You escape.'})}else o.push({t:'narrator',m:'Not in a meeting. Save your PTO.'})}
+else if(/break|mental/.test(w)){G.pto--;o.push({t:'info',m:addSusp(-15,'Mental health break')});o.push({t:'narrator',m:'Fifteen minutes staring at the bathroom wall. Most productive thing all day.'});advTime(15)}
+else if(/hint/.test(w)){G.pto--;if(!G.foundPassword)o.push({t:'info',m:'HINT: Root password is carved in the bathroom stall.'});else if(!G.gotManual)o.push({t:'info',m:'HINT: VAX manual is in Henderson\'s bookshelf.'});else if(!hasItem('Diagnostic Floppy'))o.push({t:'info',m:'HINT: Diagnostic floppy in supply closet. SEARCH.'});else if(!G.hasKeycard)o.push({t:'info',m:'HINT: Gary wants his Model M keyboard. Break room.'});else if(!G.mainframeFixed)o.push({t:'info',m:'HINT: Server room. Type FIX.'});else o.push({t:'info',m:'HINT: Mainframe fixed! Explore for bytes or wait for 5 PM.'})}
+else o.push({t:'info',m:'PTO options: PTO SKIP (meeting), PTO BREAK (suspicion), PTO HINT'});return o}
+</script>
+</body>
+</html>
