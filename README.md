@@ -151,6 +151,12 @@ Or type `DONATE` anytime in-game.
 - GitHub: [github.com/GeoxT](https://github.com/GeoxT)
 - Blog: [geox.blog](https://geox.blog)
 
+### //signal
+Join the community → [discord.gg/d46kJsU3aG](https://discord.gg/d46kJsU3aG)
+
+## Community
+Join **//signal** on Discord for discussion, beta testing, and collaboration → [discord.gg/d46kJsU3aG](https://discord.gg/d46kJsU3aG)
+
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.
